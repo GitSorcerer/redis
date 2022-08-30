@@ -289,7 +289,7 @@ static int cliReadReply(int fd) {
 
 static int selectDb(int fd) {
     int retval;
-    sds cmd;
+    sds cmd;//sds
     char type;
 
     if (config.dbnum == 0)
