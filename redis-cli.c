@@ -176,7 +176,7 @@ static int cliConnect(void) {
     static int fd = ANET_ERR;
 
     if (fd == ANET_ERR) {
-        fd = anetTcpConnect(err,config.hostip,config.hostport);
+        fd = anetTcpConnect(err,config.hostip,config.hostport);//建立socket连接
         if (fd == ANET_ERR) {
             fprintf(stderr, "Could not connect to Redis at %s:%d: %s", config.hostip, config.hostport, err);
             return -1;
@@ -223,7 +223,7 @@ static int cliReadBulkReply(int fd) {
 
     if (replylen == NULL) return 1;
     bulklen = atoi(replylen);
-    if (bulklen == -1) {
+    if (bulklen == -1) {//-1 表示nil
         sdsfree(replylen);
         printf("(nil)\n");
         return 0;
@@ -266,7 +266,7 @@ static int cliReadMultiBulkReply(int fd) {
 static int cliReadReply(int fd) {
     char type;
 
-    if (anetRead(fd,&type,1) <= 0) exit(1);
+    if (anetRead(fd,&type,1) <= 0) exit(1);//读第一个字符
     switch(type) {
     case '-':
         printf("(error) ");
@@ -287,7 +287,7 @@ static int cliReadReply(int fd) {
     }
 }
 
-static int selectDb(int fd) {
+static int selectDb(int fd) {//选择db
     int retval;
     sds cmd;//sds
     char type;
@@ -297,9 +297,9 @@ static int selectDb(int fd) {
 
     cmd = sdsempty();
     cmd = sdscatprintf(cmd,"SELECT %d\r\n",config.dbnum);
-    anetWrite(fd,cmd,sdslen(cmd));
+    anetWrite(fd,cmd,sdslen(cmd));//向redis发送字符串
     anetRead(fd,&type,1);
-    if (type <= 0 || type != '+') return 1;
+    if (type <= 0 || type != '+') return 1;//返回失败
     retval = cliReadSingleLineReply(fd,1);
     if (retval) {
         return retval;
@@ -308,26 +308,26 @@ static int selectDb(int fd) {
 }
 
 static int cliSendCommand(int argc, char **argv) {
-    struct redisCommand *rc = lookupCommand(argv[0]);
+    struct redisCommand *rc = lookupCommand(argv[0]);//匹配命令 set get ...
     int fd, j, retval = 0;
     int read_forever = 0;
     sds cmd;
 
-    if (!rc) {
+    if (!rc) {//rc==null  !rc返回true
         fprintf(stderr,"Unknown command '%s'\n",argv[0]);
         return 1;
     }
 
-    if ((rc->arity > 0 && argc != rc->arity) ||
-        (rc->arity < 0 && argc < -rc->arity)) {
+    if ((rc->arity > 0 && argc != rc->arity) ||//判断redisCommand中的个数和输入参数个数是否相等
+        (rc->arity < 0 && argc < -rc->arity)) {//例如 del 命令 最少要两个参数
             fprintf(stderr,"Wrong number of arguments for '%s'\n",rc->name);
             return 1;
     }
-    if (!strcasecmp(rc->name,"monitor")) read_forever = 1;
-    if ((fd = cliConnect()) == -1) return 1;
+    if (!strcasecmp(rc->name,"monitor")) read_forever = 1;//开启监控
+    if ((fd = cliConnect()) == -1) return 1;//连接redis server
 
     /* Select db number */
-    retval = selectDb(fd);
+    retval = selectDb(fd);//选择db 1 表示失败
     if (retval) {
         fprintf(stderr,"Error setting DB num\n");
         return 1;
@@ -336,8 +336,8 @@ static int cliSendCommand(int argc, char **argv) {
     while(config.repeat--) {
         /* Build the command to send */
         cmd = sdsempty();
-        if (rc->flags & REDIS_CMD_MULTIBULK) {
-            cmd = sdscatprintf(cmd,"*%d\r\n",argc);
+        if (rc->flags & REDIS_CMD_MULTIBULK) {//可传入多个命令 批量设置  两个两个为一组
+            cmd = sdscatprintf(cmd,"*%d\r\n",argc);//mset a a b b 
             for (j = 0; j < argc; j++) {
                 cmd = sdscatprintf(cmd,"$%lu\r\n",
                     (unsigned long)sdslen(argv[j]));
@@ -361,9 +361,9 @@ static int cliSendCommand(int argc, char **argv) {
             }
         }
         anetWrite(fd,cmd,sdslen(cmd));
-        sdsfree(cmd);
+        sdsfree(cmd);//释放内存
 
-        while (read_forever) {
+        while (read_forever) {//如果是monitor 那么就监听
             cliReadSingleLineReply(fd,0);
         }
 
