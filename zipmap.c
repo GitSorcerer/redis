@@ -100,6 +100,7 @@
 /* The following macro returns the number of bytes needed to encode the length
  * for the integer value _l, that is, 1 byte for lengths < ZIPMAP_BIGLEN and
  * 5 bytes for all the other lengths. */
+// 计算占用长度 如果<253 那么就是1
 #define ZIPMAP_LEN_BYTES(_l) (((_l) < ZIPMAP_BIGLEN) ? 1 : sizeof(unsigned int)+1)
 
 /* Create a new empty zipmap. */
@@ -113,9 +114,11 @@ unsigned char *zipmapNew(void) {
 
 /* Decode the encoded length pointed by 'p' */
 static unsigned int zipmapDecodeLength(unsigned char *p) {
-    unsigned int len = *p;
+    unsigned int len = *p;//指针得首地址 就是第一个字节数据
 
+    //说明第一个字节保存得是长度
     if (len < ZIPMAP_BIGLEN) return len;
+    //获取p[0]后面4个字节得数据
     memcpy(&len,p+1,sizeof(unsigned int));
     return len;
 }
@@ -130,6 +133,7 @@ static unsigned int zipmapEncodeLength(unsigned char *p, unsigned int len) {
             p[0] = len;
             return 1;
         } else {
+            //p[0]保存 253  后面4字节保存长度
             p[0] = ZIPMAP_BIGLEN;
             memcpy(p+1,&len,sizeof(len));
             return 1+sizeof(len);
