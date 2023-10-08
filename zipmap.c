@@ -233,15 +233,18 @@ static unsigned int zipmapRawEntryLength(unsigned char *p) {
  * already preset, otherwise to 0. */
 unsigned char *zipmapSet(unsigned char *zm, unsigned char *key, unsigned int klen, unsigned char *val, unsigned int vlen, int *update) {
     unsigned int oldlen = 0, freeoff = 0, freelen;
+    //获取key val的长度
     unsigned int reqlen = zipmapRequiredLength(klen,vlen);
     unsigned int empty, vempty;
     unsigned char *p;
    
     freelen = reqlen;
     if (update) *update = 0;
+    //判断key是否存在
     p = zipmapLookupRaw(zm,key,klen,&oldlen,&freeoff,&freelen);
     if (p == NULL && freelen == 0) {
         /* Key not found, and not space for the new key. Enlarge */
+        //不存在 则需要重新扩容 分配reqlen内存
         zm = zrealloc(zm,oldlen+reqlen);
         p = zm+oldlen-1;
         zm[oldlen+reqlen-1] = ZIPMAP_END;
